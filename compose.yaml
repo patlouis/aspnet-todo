@@ -1,0 +1,31 @@
+# Dev setup: runs the backend inside a Linux container with hot reload.
+# Usage (from TodoApp/):  docker compose up      Stop: Ctrl+C  (or docker compose down)
+services:
+  backend:
+    # Microsoft's official .NET 10 SDK image: has `dotnet build/run/watch`, nothing else needed.
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    working_dir: /src
+    # --no-launch-profile: ignore launchSettings.json, whose "localhost" binding
+    # would be unreachable from outside the container. The URL is set below instead.
+    command: dotnet watch run --no-launch-profile --non-interactive
+    ports:
+      # host:container. 127.0.0.1 = only this PC can reach it, not other devices on your network.
+      - "127.0.0.1:5199:5199"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5199 # listen on all interfaces inside the container
+      # Edits made on Windows don't raise Linux file events; poll for changes instead.
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+    volumes:
+      # Your source code (and app.db) live on Windows; the container sees them at /src.
+      - ./backend:/src
+      # Keep Linux build output out of your Windows bin/ and obj/ folders.
+      - backend-bin:/src/bin
+      - backend-obj:/src/obj
+      # Cache NuGet packages between runs so restores are fast.
+      - nuget-cache:/root/.nuget/packages
+
+volumes:
+  backend-bin:
+  backend-obj:
+  nuget-cache:
